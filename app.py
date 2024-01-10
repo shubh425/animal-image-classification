@@ -10,7 +10,9 @@ import numpy as np
 from keras.applications.imagenet_utils import preprocess_input, decode_predictions
 from keras.models import load_model
 from keras.preprocessing import image
-
+import tensorflow as tf
+import tensorflow_hub as hub
+from helper_functions import load_and_prep_image
 # Flask utils
 from flask import Flask, redirect, url_for, request, render_template
 from werkzeug.utils import secure_filename
@@ -20,34 +22,34 @@ from gevent.pywsgi import WSGIServer
 app = Flask(__name__)
 
 # Model saved with Keras model.save()
-MODEL_PATH = 'models/model_resnet.h5'
+MODEL_PATH = 'models\efficientnet.h5'
+class_names = ['acinonyx-jubatus',
+ 'ailuropoda-melanoleuca',
+ 'canis-lupus-familiaris',
+ 'equus-caballus',
+ 'felis-catus',
+ 'gallus-gallus-domesticus',
+ 'panthera-tigris']
 
 # Load your trained model
-#model = load_model(MODEL_PATH)
-#model._make_predict_function()          # Necessary
-# print('Model loaded. Start serving...')
+model = tf.keras.models.load_model(
+       (MODEL_PATH),
+       custom_objects={'KerasLayer':hub.KerasLayer})
+model.make_predict_function()          # Necessary
+print('Model loaded. Start serving...')
 
 # You can also use pretrained model from Keras
 # Check https://keras.io/applications/
-from keras.applications.resnet50 import ResNet50
+'''from keras.applications.resnet50 import ResNet50
 model = ResNet50(weights='imagenet')
 model.save('models/model_resnet.h5')
-print('Model loaded. Check http://127.0.0.1:5000/')
+print('Model loaded. Check http://127.0.0.1:5000/')'''
 
 
 def model_predict(img_path, model):
-    img = image.load_img(img_path, target_size=(224, 224))
+    img = load_and_prep_image(img_path, img_shape=224,scale=False)
 
-    # Preprocessing the image
-    x = image.img_to_array(img)
-    # x = np.true_divide(x, 255)
-    x = np.expand_dims(x, axis=0)
-
-    # Be careful how your trained model deals with the input
-    # otherwise, it won't make correct prediction!
-    x = preprocess_input(x, mode='caffe')
-
-    preds = model.predict(x)
+    preds = model.predict(tf.expand_dims(img, axis=0))
     return preds
 
 
@@ -71,11 +73,13 @@ def upload():
 
         # Make prediction
         preds = model_predict(file_path, model)
-
-        # Process your result for human
-        # pred_class = preds.argmax(axis=-1)            # Simple argmax
-        pred_class = decode_predictions(preds, top=1)   # ImageNet Decode
-        result = str(pred_class[0][0][1])               # Convert to string
+        if len(preds[0])>1:
+            # Process your result for human
+            pred_class = class_names[preds.argmax()]
+        else:
+            pred_class = class_names[int(tf.round(preds)[0][0])]       # Simple argmax
+        #pred_class = decode_predictions(preds, top=1)   # ImageNet Decode
+        result = pred_class               # Convert to string
         return result
     return None
 

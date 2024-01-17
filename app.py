@@ -22,7 +22,7 @@ from gevent.pywsgi import WSGIServer
 app = Flask(__name__)
 
 # Model saved with Keras model.save()
-MODEL_PATH = 'models\efficientnet.h5'
+MODEL_PATH = 'models\07_efficientnetb0_fine_tuned_101_classes_mixed_precision.h5'
 class_names = ['acinonyx-jubatus',
  'ailuropoda-melanoleuca',
  'canis-lupus-familiaris',
@@ -33,8 +33,7 @@ class_names = ['acinonyx-jubatus',
 
 # Load your trained model
 model = tf.keras.models.load_model(
-       (MODEL_PATH),
-       custom_objects={'KerasLayer':hub.KerasLayer})
+       (MODEL_PATH), custom_objects = {'KerasLayer':hub.KerasLayer})
 model.make_predict_function()          # Necessary
 print('Model loaded. Start serving...')
 
